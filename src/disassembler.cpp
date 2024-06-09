@@ -1,6 +1,6 @@
-
 #include <array>
 #include <format>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <filesystem>
@@ -32,32 +32,32 @@ constexpr bool is_mov(byte b) { return (b >> 6) == 1; }
 // MVI r --> 0b00DDD110
 constexpr bool is_mvi(byte b) { return ((b >> 6 == 0) && src(b) == reg::Memory); }
 
-template <typename InIt, typename OutIt>
-void decode(InIt ip, InIt eof, OutIt out)
+template <typename InIt>
+void decode(InIt ip, InIt eof, std::ostream& os)
 {
     size_t memory_address = 0;
     while(ip != eof)
     {
         const byte b = *ip;
-        std::format_to(out, "{:#08x}", memory_address);
+        os << std::format("{:#06x}\t", memory_address);
 
-        if(b == 0x00) { *out = "NOP\n"; }
+        if(b == 0x00) { os << "NOP"; }
         else if(is_mov(b)) { 
-            std::format_to(out, 
+            os << std::format(
                 "MOV {:s} {:s}", 
                 reg_name[dest(b)], 
                 reg_name[src(b)]);
         }
         else if(is_mvi(b))
         {
-            std::format_to(out,
+            os << std::format(
                 "MVI {:s} {:#x}",
                 reg_name[dest(b)],
                 *++ip);
+            memory_address += 8; // advance past data
         }
     
-        *out = '\n';
-        ++out;
+        os << '\n';
         ++ip;
         memory_address += 8;
     }
@@ -65,11 +65,10 @@ void decode(InIt ip, InIt eof, OutIt out)
 
 int main(int argc, char* argv[])
 {
-    const fs::path p("/home/ldroepe/emu/space_invaders/rom/invaders.h");
-    std::ifstream inFile(p, "r");
+    const fs::path p("/home/ldroepe/projects/8080emu/rom/invaders.h");
+    std::ifstream inFile(p, std::ios::in);
     inFile >> std::hex;
     std::istream_iterator<byte> in(inFile);
-    const std::istream_iterator<byte> last = std::next(in, 5);
-    std::ostream_iterator<const char*> out(std::cout);
-    decode(in, last, out);
+    const std::istream_iterator<byte> last;
+    decode(in, last, std::cout);
 }
