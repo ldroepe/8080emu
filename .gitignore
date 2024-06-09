@@ -2,3 +2,5 @@ rom/
 .vimrc
 *.o
 *.out
+build
+*.sw[po]
