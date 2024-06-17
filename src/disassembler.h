@@ -7,6 +7,7 @@
 #include <iostream>
 
 using byte = uint8_t;
+using address = size_t;
 using reg_id_t = byte;
 namespace fs = std::filesystem;
 
@@ -36,11 +37,11 @@ constexpr bool is_mvi(byte b) { return ((b >> 6 == 0) && src(b) == reg::Memory);
 template <typename InIt>
 void decode(InIt ip, InIt eof, std::ostream& os)
 {
-    size_t memory_address = 0;
+    address memory_address = 0;
     while(ip != eof)
     {
         const byte b = *ip;
-        os << std::format("{:#06x}\t", memory_address);
+        os << std::format("{:#08x}\t", memory_address);
 
         if(b == 0x00) { os << "NOP"; }
         else if(is_mov(b)) { 
@@ -57,6 +58,7 @@ void decode(InIt ip, InIt eof, std::ostream& os)
                 *++ip);
             memory_address += 8; // advance past data
         }
+        else { os << "UNKNOWN"; }
     
         os << '\n';
         ++ip;
