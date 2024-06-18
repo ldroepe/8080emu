@@ -5,6 +5,8 @@
 
 #include "../src/disassembler.h"
 
+using instruction_set = std::vector<byte>;
+
 struct disassembled_code
 {
     // NOTE -- these vectors implicitly share an index. addresses[i] corresponds
@@ -33,26 +35,29 @@ disassembled_code parse_disassembled_output(const std::string& code)
     return dis;
 }
 
-TEST(DecodeTest, TestParseDissassembledOutput)
+[[nodiscard]]
+disassembled_code disassemble_instruction_set(const instruction_set& is)
 {
-
-    std::vector<byte> input(100, 0x00);
     std::ostringstream oss;
-    decode(input.cbegin(), input.cend(), oss);
+    decode(std::cbegin(is), std::cend(is), oss);
     const auto decoded = oss.str();
-    const disassembled_code nop_dis = parse_disassembled_output(decoded);
-
-    EXPECT_GT(nop_dis.addresses.size(), 0);
-    EXPECT_GT(nop_dis.opcodes.size(), 0);
+    return parse_disassembled_output(decoded);
 }
 
-TEST(DecodeTest, TestNOP) 
+TEST(InfraTest, parse_disassembled_output)
 {
-    std::vector<byte> input(100, 0x00);
-    std::ostringstream oss;
-    decode(input.cbegin(), input.cend(), oss);
-    const auto decoded = oss.str();
-    const disassembled_code nop_dis = parse_disassembled_output(decoded);
+
+    const instruction_set input(100, 0x00);
+    const disassembled_code nop_dis = disassemble_instruction_set(input);
+
+    EXPECT_EQ(nop_dis.addresses.size(), 100);
+    EXPECT_EQ(nop_dis.opcodes.size(), 100);
+}
+
+TEST(NOPTest, many_nops) 
+{
+    const instruction_set input(100, 0x00);
+    const disassembled_code nop_dis = disassemble_instruction_set(input);
     
     // opcodes are correctly disassembled
     const auto is_nop = [](const std::string& opcode) {
@@ -74,4 +79,53 @@ TEST(DecodeTest, TestNOP)
         std::next(std::cbegin(memory_diffs)), // adjacent_difference includes 1st element
         std::cend(memory_diffs), 
         contiguous_memory);
+}
+
+TEST(STATest, simple_direct_acc_store_decode)
+{
+    const instruction_set sta_input = {opcode::STA, 0xef, 0xbe};
+    const disassembled_code sta_dis = disassemble_instruction_set(sta_input);
+
+    EXPECT_EQ(sta_dis.addresses.size(), 1) << "Single instruction --> single address";
+    ASSERT_EQ(sta_dis.opcodes.size(), 1) << "STA instruction (0x32) didn't yield 1 opcode";
+
+    const std::string sta_opcode = sta_dis.opcodes[0];
+    EXPECT_TRUE(sta_opcode.starts_with("STA")) << "0x32 (0b00110010) not decoded into STA";
+
+    EXPECT_TRUE(sta_opcode.ends_with("beef")) << "{0x32, 0xbe, 0xef} --> " << sta_opcode;
+}
+
+TEST(STATest, simple_direct_acc_store_addresses)
+{
+    const instruction_set sta_input = {opcode::NOP, opcode::STA, 0xef, 0xbe, opcode::NOP};
+    const disassembled_code sta_dis = disassemble_instruction_set(sta_input);
+
+    EXPECT_EQ(sta_dis.addresses.size(), 3) << "STA Input didn't yield 3 addresses";
+    ASSERT_EQ(sta_dis.opcodes.size(), 3) << "STA Input didn't yield 3 opcodes";
+
+    EXPECT_EQ(sta_dis.addresses[1] - sta_dis.addresses[0], 8)
+        << "NOP & STA should be adjacent";
+    EXPECT_EQ(sta_dis.addresses[2] - sta_dis.addresses[1], 24)
+        << "STA should take up 3 bytes of memory";
+
+    EXPECT_TRUE(sta_dis.opcodes[1].starts_with("STA"));
+    EXPECT_TRUE(sta_dis.opcodes[1].ends_with("beef"));
+}
+
+TEST(STATest, data_and_opcodes_are_separate)
+// Ensure that the address portion of the STA opcode is not interpreted as an
+// opcode (NOP in this case)
+{
+    const instruction_set sta_input = {opcode::NOP, opcode::STA, 0x00, 0x00, opcode::NOP};
+    const disassembled_code sta_dis = disassemble_instruction_set(sta_input);
+
+    EXPECT_EQ(sta_dis.addresses.size(), 3) << "STA input didn't yield 3 addresses";
+    ASSERT_EQ(sta_dis.opcodes.size(), 3) << "STA input didn't yield 3 opcodes";
+
+    EXPECT_EQ(sta_dis.opcodes[0], "NOP");
+    EXPECT_EQ(sta_dis.opcodes[2], "NOP");
+
+    const auto& sta = sta_dis.opcodes[1];
+    EXPECT_TRUE(sta.starts_with("STA"));
+    EXPECT_TRUE(sta.ends_with("0000"));
 }

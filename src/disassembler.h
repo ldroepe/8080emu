@@ -25,6 +25,12 @@ enum reg: reg_id_t
 constexpr std::array<const char*, 8> reg_name = 
     {"B", "C", "D", "E", "H", "L", "Memory", "A"};
 
+enum opcode : byte
+{
+    NOP = 0x00,
+    STA = 0x32 //0b00110010
+};
+
 // 0x07 = 0b00000111
 constexpr reg dest(byte b) { return static_cast<reg>((b >> 3) & 0x07); }
 constexpr reg src(byte b) { return static_cast<reg>(b & 0x07); }
@@ -43,23 +49,29 @@ void decode(InIt ip, InIt eof, std::ostream& os)
         const byte b = *ip;
         os << std::format("{:#08x}\t", memory_address);
 
-        if(b == 0x00) { os << "NOP"; }
-        else if(is_mov(b)) { 
-            os << std::format(
-                "MOV {:s} {:s}", 
-                reg_name[dest(b)], 
-                reg_name[src(b)]);
-        }
-        else if(is_mvi(b))
+        switch(b)
         {
-            os << std::format(
-                "MVI {:s} {:#x}",
-                reg_name[dest(b)],
-                *++ip);
-            memory_address += 8; // advance past data
+            case opcode::NOP:
+                os << "NOP";
+                break;
+            case opcode::STA: // Store A direct
+            {
+                os << "STA ";
+                ++ip; // advance past STA
+                const byte low_byte = *ip++;
+                const byte high_byte = *ip;
+                const uint16_t to_store = ((high_byte << 8) | low_byte);
+                os << std::format("{:#08x}", to_store);
+                memory_address += 16; // high & low byte
+                break;
+            }
+            default:
+            {
+                os << "UNKNOWN";
+                break;
+            }
         }
-        else { os << "UNKNOWN"; }
-    
+
         os << '\n';
         ++ip;
         memory_address += 8;
