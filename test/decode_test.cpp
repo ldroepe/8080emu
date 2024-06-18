@@ -1,4 +1,5 @@
 #include <vector>
+#include <random>
 #include <numeric>
 #include <algorithm>
 #include <gtest/gtest.h>
@@ -52,6 +53,40 @@ TEST(InfraTest, parse_disassembled_output)
 
     EXPECT_EQ(nop_dis.addresses.size(), 100);
     EXPECT_EQ(nop_dis.opcodes.size(), 100);
+}
+
+TEST(MemoryTest, single_byte_instructions_are_adjacent)
+{
+    const std::vector<opcode> single_byte_opcodes = {
+        opcode::NOP, opcode::STAX_B
+    };
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> which_opcode(0, single_byte_opcodes.size()-1);
+
+    const auto choose_opcode = [&]() { return single_byte_opcodes[which_opcode(gen)]; };
+
+    constexpr int n = 100;
+    instruction_set input;
+    input.reserve(n);
+    std::generate_n(std::back_inserter(input), n, choose_opcode);
+
+    const disassembled_code single_byte_dis = disassemble_instruction_set(input);
+
+    const auto contiguous_memory = [](byte loc) { EXPECT_EQ(loc, 0x08); };
+    std::vector<address> memory_diffs;
+    memory_diffs.reserve(single_byte_dis.addresses.size());
+
+    // memory addresses are adjacent
+    std::adjacent_difference(
+        std::cbegin(single_byte_dis.addresses), 
+        std::cend(single_byte_dis.addresses), 
+        std::back_inserter(memory_diffs));
+    std::for_each(
+        std::next(std::cbegin(memory_diffs)), // adjacent_difference includes 1st element
+        std::cend(memory_diffs), 
+        contiguous_memory);
 }
 
 TEST(NOPTest, many_nops) 
@@ -128,4 +163,15 @@ TEST(STATest, data_and_opcodes_are_separate)
     const auto& sta = sta_dis.opcodes[1];
     EXPECT_TRUE(sta.starts_with("STA"));
     EXPECT_TRUE(sta.ends_with("0000"));
+}
+
+TEST(STAXBTest, simple_stax_b_decode)
+{
+    const instruction_set stax_input = {opcode::STAX_B};
+    const disassembled_code stax_dis = disassemble_instruction_set(stax_input);
+
+    EXPECT_EQ(stax_dis.addresses.size(), 1) << "STAX B input didn't yield 1 address";
+    ASSERT_EQ(stax_dis.opcodes.size(), 1) << "STAX B input didn't yield 1 opcode";
+
+    EXPECT_EQ(stax_dis.opcodes[0], "STAX B");
 }
