@@ -29,6 +29,7 @@ enum opcode : byte
 {
     NOP = 0x00,     //0b00000000
     STAX_B = 0x02,  //0b00000010
+    STAX_D = 0x12,  //0b00010010
     STA = 0x32      //0b00110010
 };
 
@@ -58,6 +59,11 @@ void decode(InIt ip, InIt eof, std::ostream& os)
             case opcode::STAX_B: // Store A indirect
             {
                 os << "STAX B";
+                break;
+            }
+            case opcode::STAX_D: // Store A indirect
+            {
+                os << "STAX D";
                 break;
             }
             case opcode::STA: // Store A direct

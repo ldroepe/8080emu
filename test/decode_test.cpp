@@ -58,7 +58,7 @@ TEST(InfraTest, parse_disassembled_output)
 TEST(MemoryTest, single_byte_instructions_are_adjacent)
 {
     const std::vector<opcode> single_byte_opcodes = {
-        opcode::NOP, opcode::STAX_B
+        opcode::NOP, opcode::STAX_B, opcode::STAX_D
     };
 
     std::random_device rd;
@@ -174,4 +174,15 @@ TEST(STAXBTest, simple_stax_b_decode)
     ASSERT_EQ(stax_dis.opcodes.size(), 1) << "STAX B input didn't yield 1 opcode";
 
     EXPECT_EQ(stax_dis.opcodes[0], "STAX B");
+}
+
+TEST(STAXDTest, simple_stax_d_decode)
+{
+    const instruction_set stax_input = {opcode::STAX_D};
+    const disassembled_code stax_dis = disassemble_instruction_set(stax_input);
+
+    EXPECT_EQ(stax_dis.addresses.size(), 1) << "STAX D input didn't yield 1 address";
+    ASSERT_EQ(stax_dis.opcodes.size(), 1) << "STAX D input didn't yield 1 opcode";
+
+    EXPECT_EQ(stax_dis.opcodes[0], "STAX D");
 }
