@@ -59,7 +59,8 @@ TEST(MemoryTest, single_byte_instructions_are_adjacent)
 {
     // opcodes which perform their full function from a single byte in memory
     const std::vector<opcode> single_byte_opcodes = {
-        opcode::NOP, opcode::STAX_B, opcode::STAX_D, opcode::LDAX_B
+        opcode::NOP, opcode::STAX_B, opcode::STAX_D, opcode::LDAX_B,
+        opcode::LDAX_D
     };
 
     std::random_device rd;
@@ -196,4 +197,15 @@ TEST(LDAXBTest, simple_ldax_b_decode)
     ASSERT_EQ(ldax_dis.opcodes.size(), 1) << "LDAX B input didn't yield 1 opcode";
 
     EXPECT_EQ(ldax_dis.opcodes[0], "LDAX B");
+}
+
+TEST(LDAXDTest, simple_ldax_d_decode)
+{
+    const instruction_set ldax_input = {opcode::LDAX_D};
+    const disassembled_code ldax_dis = disassemble_instruction_set(ldax_input);
+
+    EXPECT_EQ(ldax_dis.addresses.size(), 1) << "LDAX D input didn't yield 1 address";
+    ASSERT_EQ(ldax_dis.opcodes.size(), 1) << "LDAX D input didn't yield 1 opcode";
+
+    EXPECT_EQ(ldax_dis.opcodes[0], "LDAX D");
 }

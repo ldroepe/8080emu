@@ -31,6 +31,7 @@ enum opcode : byte
     STAX_B = 0x02,  //0b00000010
     STAX_D = 0x12,  //0b00010010
     LDAX_B = 0x0a,  //0b00001010
+    LDAX_D = 0x1a,  //0b00011010
     STA    = 0x32   //0b00110010
 };
 
@@ -72,6 +73,11 @@ void decode(InIt ip, InIt eof, std::ostream& os)
                 os << "LDAX B";
                 break;
             }
+            case opcode::LDAX_D: // Load A indirect
+            {
+                os << "LDAX D";
+                break;
+            }
             case opcode::STA: // Store A direct
             {
                 os << "STA ";
@@ -79,7 +85,7 @@ void decode(InIt ip, InIt eof, std::ostream& os)
                 const byte low_byte = *ip++;
                 const byte high_byte = *ip;
                 const uint16_t to_store = ((high_byte << 8) | low_byte);
-                os << std::format("{:#08x}", to_store);
+                os << std::format("{:#06x}", to_store);
                 memory_address += 16; // high & low byte
                 break;
             }
