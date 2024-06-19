@@ -126,9 +126,8 @@ TEST(STATest, simple_direct_acc_store_decode)
     ASSERT_EQ(sta_dis.opcodes.size(), 1) << "STA instruction (0x32) didn't yield 1 opcode";
 
     const std::string sta_opcode = sta_dis.opcodes[0];
-    EXPECT_TRUE(sta_opcode.starts_with("STA")) << "0x32 (0b00110010) not decoded into STA";
-
-    EXPECT_TRUE(sta_opcode.ends_with("beef")) << "{0x32, 0xbe, 0xef} --> " << sta_opcode;
+    EXPECT_TRUE(sta_opcode.starts_with("STA")) << "0x32 (0b00110010) decoded to: " << sta_opcode;
+    EXPECT_TRUE(sta_opcode.ends_with("beef")) << "{0x32, 0xef, 0xbe} --> " << sta_opcode;
 }
 
 TEST(STATest, simple_direct_acc_store_addresses)
@@ -144,8 +143,9 @@ TEST(STATest, simple_direct_acc_store_addresses)
     EXPECT_EQ(sta_dis.addresses[2] - sta_dis.addresses[1], 24)
         << "STA should take up 3 bytes of memory";
 
-    EXPECT_TRUE(sta_dis.opcodes[1].starts_with("STA"));
-    EXPECT_TRUE(sta_dis.opcodes[1].ends_with("beef"));
+    const auto& sta = sta_dis.opcodes[1];
+    EXPECT_TRUE(sta.starts_with("STA")) << "STA opcode is: " << sta;
+    EXPECT_TRUE(sta.ends_with("beef")) << "STA opcode is: " << sta;
 }
 
 TEST(STATest, data_and_opcodes_are_separate)
@@ -162,8 +162,8 @@ TEST(STATest, data_and_opcodes_are_separate)
     EXPECT_EQ(sta_dis.opcodes[2], "NOP");
 
     const auto& sta = sta_dis.opcodes[1];
-    EXPECT_TRUE(sta.starts_with("STA"));
-    EXPECT_TRUE(sta.ends_with("0000"));
+    EXPECT_TRUE(sta.starts_with("STA")) << "STA opcode is: " << sta;
+    EXPECT_TRUE(sta.ends_with("0000")) << "STA opcode is: " << sta;
 }
 
 TEST(STAXBTest, simple_stax_b_decode)
@@ -208,4 +208,54 @@ TEST(LDAXDTest, simple_ldax_d_decode)
     ASSERT_EQ(ldax_dis.opcodes.size(), 1) << "LDAX D input didn't yield 1 opcode";
 
     EXPECT_EQ(ldax_dis.opcodes[0], "LDAX D");
+}
+
+
+TEST(LDATest, simple_direct_acc_load_decode)
+{
+    const instruction_set lda_input = {opcode::LDA, 0xef, 0xbe};
+    const disassembled_code lda_dis = disassemble_instruction_set(lda_input);
+
+    EXPECT_EQ(lda_dis.addresses.size(), 1) << "Single instruction --> single address";
+    ASSERT_EQ(lda_dis.opcodes.size(), 1) << "LDA instruction (0x3a) didn't yield 1 opcode";
+
+    const std::string lda_opcode = lda_dis.opcodes[0];
+    EXPECT_TRUE(lda_opcode.starts_with("LDA")) << "0x3a (0b00111010) decoded to: " << lda_opcode;
+    EXPECT_TRUE(lda_opcode.ends_with("beef")) << "{0x3a, 0xef, 0xbe} --> " << lda_opcode;
+}
+
+TEST(LDATest, simple_direct_acc_load_values)
+{
+    const instruction_set lda_input = {opcode::NOP, opcode::LDA, 0xef, 0xbe, opcode::NOP};
+    const disassembled_code lda_dis = disassemble_instruction_set(lda_input);
+
+    EXPECT_EQ(lda_dis.addresses.size(), 3) << "LDA Input didn't yield 3 addresses";
+    ASSERT_EQ(lda_dis.opcodes.size(), 3) << "LDA Input didn't yield 3 opcodes";
+
+    EXPECT_EQ(lda_dis.addresses[1] - lda_dis.addresses[0], 8)
+        << "NOP & LDA should be adjacent";
+    EXPECT_EQ(lda_dis.addresses[2] - lda_dis.addresses[1], 24)
+        << "LDA should take up 3 bytes of memory";
+
+    const auto& lda = lda_dis.opcodes[1];
+    EXPECT_TRUE(lda.starts_with("LDA")) << "LDA opcode is: " << lda;
+    EXPECT_TRUE(lda.ends_with("beef")) << "LDA opcode is: " << lda;
+}
+
+TEST(LDATest, data_and_opcodes_are_separate)
+// Ensure that the value portion of the LDA opcode is not interpreted as an
+// opcode (NOP in this case)
+{
+    const instruction_set lda_input = {opcode::NOP, opcode::LDA, 0x00, 0x00, opcode::NOP};
+    const disassembled_code lda_dis = disassemble_instruction_set(lda_input);
+
+    EXPECT_EQ(lda_dis.addresses.size(), 3) << "LDA input didn't yield 3 addresses";
+    ASSERT_EQ(lda_dis.opcodes.size(), 3) << "LDA input didn't yield 3 opcodes";
+
+    EXPECT_EQ(lda_dis.opcodes[0], "NOP");
+    EXPECT_EQ(lda_dis.opcodes[2], "NOP");
+
+    const auto& lda = lda_dis.opcodes[1];
+    EXPECT_TRUE(lda.starts_with("LDA")) << "LDA opcode is: " << lda;
+    EXPECT_TRUE(lda.ends_with("0000")) << "LDA opcode is: " << lda;
 }
