@@ -27,10 +27,11 @@ constexpr std::array<const char*, 8> reg_name =
 
 enum opcode : byte
 {
-    NOP = 0x00,     //0b00000000
+    NOP    = 0x00,  //0b00000000
     STAX_B = 0x02,  //0b00000010
     STAX_D = 0x12,  //0b00010010
-    STA = 0x32      //0b00110010
+    LDAX_B = 0x0a,  //0b00001010
+    STA    = 0x32   //0b00110010
 };
 
 // 0x07 = 0b00000111
@@ -64,6 +65,11 @@ void decode(InIt ip, InIt eof, std::ostream& os)
             case opcode::STAX_D: // Store A indirect
             {
                 os << "STAX D";
+                break;
+            }
+            case opcode::LDAX_B: // Load A indirect
+            {
+                os << "LDAX B";
                 break;
             }
             case opcode::STA: // Store A direct
